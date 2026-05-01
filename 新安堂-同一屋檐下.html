@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGNITE - 工业与文明</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Space+Mono&display=swap');
+
+        :root {
+            --accent-red: #ff3e00;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Space Mono', monospace;
+            cursor: crosshair;
+        }
+
+        .heavy-text {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+
+        .strobe-hover:hover {
+            animation: strobe 0.1s infinite;
+        }
+
+        @keyframes strobe {
+            0% { opacity: 1; color: #fff; }
+            50% { opacity: 0.5; color: var(--accent-red); }
+            100% { opacity: 1; color: #fff; }
+        }
+
+        .line-accent {
+            height: 1px;
+            background: linear-gradient(90deg, var(--accent-red), transparent);
+            width: 100%;
+        }
+
+        .vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+
+        .spark {
+            position: absolute;
+            background: var(--accent-red);
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        section {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- 侧边装饰 -->
+    <div class="fixed left-4 top-1/2 -translate-y-1/2 hidden lg:block">
+        <div class="vertical-text text-[10px] tracking-[0.5em] text-zinc-600">
+            IGNITION SEQUENCE STARTING // 00:00:01
+        </div>
+    </div>
+
+    <!-- 顶部导航 -->
+    <nav class="flex justify-between items-center px-6 py-8 border-b border-white/10">
+        <div class="heavy-text text-2xl tracking-tighter strobe-hover">IGNITE<span class="text-[var(--accent-red)]">_</span></div>
+        <div class="flex gap-10 text-[10px] uppercase tracking-widest text-zinc-400">
+            <a href="#origin" class="hover:text-white transition">起源</a>
+            <a href="#acceleration" class="hover:text-white transition">加速</a>
+            <a href="#future" class="hover:text-white transition">未来</a>
+        </div>
+    </nav>
+
+    <!-- 核心视觉 -->
+    <main class="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden" id="hero">
+        <div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
+            <div class="w-full h-full bg-[radial-gradient(circle_at_center,#333_0%,transparent_70%)]"></div>
+        </div>
+
+        <h2 class="text-zinc-500 text-xs tracking-[1em] mb-6 uppercase">Civilization Catalyst</h2>
+        <h1 class="heavy-text text-7xl md:text-[12rem] leading-none mb-10 select-none">
+            点<span class="text-[var(--accent-red)] italic">燃</span>
+        </h1>
+        
+        <div class="max-w-xl text-zinc-400 text-sm leading-relaxed mb-12">
+            从第一簇火苗被燧石敲击而出，人类便告别了黑暗。这不仅是燃料的耗损，更是热量转化作动力的工业奇迹。
+        </div>
+
+        <button id="igniteBtn" class="group relative px-12 py-5 border border-white/20 hover:border-[var(--accent-red)] transition-all">
+            <span class="relative z-10 heavy-text tracking-widest group-hover:text-white">点击点燃系统</span>
+            <div class="absolute inset-0 bg-[var(--accent-red)] scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+        </button>
+
+        <div class="mt-20 flex gap-4 opacity-30">
+            <div class="w-1 h-1 bg-white"></div>
+            <div class="w-1 h-1 bg-white"></div>
+            <div class="w-1 h-1 bg-[var(--accent-red)]"></div>
+        </div>
+    </main>
+
+    <!-- 第一章：起源 -->
+    <section id="origin" class="py-32 px-6 max-w-6xl mx-auto">
+        <div class="grid lg:grid-cols-12 gap-10">
+            <div class="lg:col-span-4">
+                <div class="text-[var(--accent-red)] mb-4 font-bold tracking-widest">CHAPTER 01</div>
+                <h3 class="heavy-text text-4xl mb-6">燧石与意志</h3>
+                <div class="line-accent mb-6"></div>
+                <p class="text-zinc-500 text-sm leading-loose">
+                    火的控制是人类历史上最重要的转折点。它不仅改变了我们的饮食结构，更延长了白昼，点燃了人类对未知探索的渴望。
+                </p>
+            </div>
+            <div class="lg:col-span-8">
+                <div class="aspect-video bg-zinc-900 border border-white/10 relative overflow-hidden group">
+                    <img src="https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?auto=format&fit=crop&q=80&w=1200" alt="" class="grayscale group-hover:grayscale-0 transition duration-1000 opacity-50 group-hover:opacity-100 object-cover w-full h-full">
+                    <div class="absolute bottom-4 left-4 text-[10px] text-white bg-black px-2 py-1">RAW ENERGY / ARCHIVE 01</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 第二章：加速 -->
+    <section id="acceleration" class="py-32 bg-zinc-900/30">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="flex flex-col md:flex-row items-end justify-between mb-20 gap-8">
+                <h3 class="heavy-text text-6xl md:text-8xl text-white/5">ACCEL<br>ERATION</h3>
+                <div class="max-w-md text-right">
+                    <h4 class="heavy-text text-2xl mb-4 text-[var(--accent-red)]">工业的脉动</h4>
+                    <p class="text-zinc-500 text-sm italic">
+                        "蒸汽机是火的延伸，内燃机是火的囚徒。我们驯服了爆炸，将其转化为推力。"
+                    </p>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-1 border-t border-white/5">
+                <div class="p-8 border-r border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <div class="text-[var(--accent-red)] mb-6 text-xl">01</div>
+                    <div class="font-bold mb-2 tracking-tighter uppercase">热能效率</div>
+                    <div class="text-xs text-zinc-500 uppercase">Thermal Efficiency</div>
+                </div>
+                <div class="p-8 border-r border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <div class="text-[var(--accent-red)] mb-6 text-xl">02</div>
+                    <div class="font-bold mb-2 tracking-tighter uppercase">活塞冲程</div>
+                    <div class="text-xs text-zinc-500 uppercase">Piston Stroke</div>
+                </div>
+                <div class="p-8 border-r border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <div class="text-[var(--accent-red)] mb-6 text-xl">03</div>
+                    <div class="font-bold mb-2 tracking-tighter uppercase">点火系统</div>
+                    <div class="text-xs text-zinc-500 uppercase">Ignition System</div>
+                </div>
+                <div class="p-8 border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <div class="text-[var(--accent-red)] mb-6 text-xl">04</div>
+                    <div class="font-bold mb-2 tracking-tighter uppercase">文明引擎</div>
+                    <div class="text-xs text-zinc-500 uppercase">Civilization Engine</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer id="future" class="py-20 px-6 border-t border-white/10 text-center">
+        <p class="text-[10px] text-zinc-600 tracking-widest uppercase mb-6">Keep the fire burning within the machine</p>
+        <div class="heavy-text text-3xl mb-8">点燃所有想象力</div>
+        <div class="flex justify-center gap-6">
+            <div class="w-12 h-[1px] bg-white/20 my-auto"></div>
+            <div class="text-zinc-400 text-xs font-mono tracking-widest">EST. 2024 / CORE UNIT</div>
+            <div class="w-12 h-[1px] bg-white/20 my-auto"></div>
+        </div>
+    </footer>
+
+    <script>
+        // 滚动显示逻辑
+        const sections = document.querySelectorAll('section');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        sections.forEach(s => observer.observe(s));
+
+        // 点击产生火花效果
+        const btn = document.getElementById('igniteBtn');
+        btn.addEventListener('click', (e) => {
+            createSparks(e.clientX, e.clientY);
+            
+            // 按钮点击反馈
+            btn.style.transform = 'scale(0.95)';
+            setTimeout(() => btn.style.transform = 'scale(1)', 100);
+            
+            // 简单的震动反馈模拟
+            document.body.style.transform = 'translateX(2px)';
+            setTimeout(() => document.body.style.transform = 'translateX(-2px)', 50);
+            setTimeout(() => document.body.style.transform = 'translateX(0)', 100);
+        });
+
+        function createSparks(x, y) {
+            for (let i = 0; i < 30; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'spark';
+                
+                const size = Math.random() * 3 + 1;
+                spark.style.width = size + 'px';
+                spark.style.height = size + 'px';
+                
+                spark.style.left = x + 'px';
+                spark.style.top = y + 'px';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 10 + 5;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity;
+                
+                document.body.appendChild(spark);
+                
+                let opacity = 1;
+                let posX = x;
+                let posY = y;
+                
+                const animateSpark = () => {
+                    posX += vx;
+                    posY += vy + 0.5; // 重力效果
+                    opacity -= 0.02;
+                    
+                    spark.style.left = posX + 'px';
+                    spark.style.top = posY + 'px';
+                    spark.style.opacity = opacity;
+                    
+                    if (opacity > 0) {
+                        requestAnimationFrame(animateSpark);
+                    } else {
+                        spark.remove();
+                    }
+                };
+                
+                requestAnimationFrame(animateSpark);
+            }
+        }
+
+        // 鼠标移动背景微动
+        document.addEventListener('mousemove', (e) => {
+            const moveX = (e.clientX - window.innerWidth / 2) / 50;
+            const moveY = (e.clientY - window.innerHeight / 2) / 50;
+            document.getElementById('hero').style.backgroundPosition = `${50 + moveX}% ${50 + moveY}%`;
+        });
+    </script>
+</body>
+</html>
