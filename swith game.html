@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>绝境求生：地牢大师</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            image-rendering: pixelated;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 50;
+        }
+        #menuOverlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        #messageBox {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            border: 3px solid #3b82f6;
+            z-index: 100;
+            min-width: 300px;
+        }
+        .mode-card {
+            background: #2d2d2d;
+            border: 2px solid #444;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .mode-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-5px);
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menuOverlay">
+        <h1 class="text-5xl font-bold text-white mb-10 tracking-widest">地牢大师</h1>
+        <div class="flex gap-6">
+            <div onclick="startGame('single')" class="mode-card p-8 rounded-xl text-center w-64">
+                <div class="text-4xl mb-4">👤</div>
+                <h2 class="text-2xl font-bold text-white">单人闯关</h2>
+                <p class="text-gray-400 mt-2 text-sm">挑战经典守卫与陷阱</p>
+            </div>
+            <div onclick="startGame('multi')" class="mode-card p-8 rounded-xl text-center w-64">
+                <div class="text-4xl mb-4">👥</div>
+                <h2 class="text-2xl font-bold text-white">联机合作</h2>
+                <p class="text-gray-400 mt-2 text-sm">与在线好友同步进度</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="ui-overlay">
+        <div class="text-2xl font-bold text-blue-400">关卡: <span id="levelVal">1</span></div>
+        <div id="multiInfo" class="hidden">
+            <div class="text-sm text-gray-300">我的ID: <span id="myIdDisplay" class="font-mono">--</span></div>
+            <div id="onlineCount" class="text-xs text-green-400">在线人数: 1</div>
+        </div>
+        <div class="text-lg text-red-400">生命值: <span id="hpVal">100</span>%</div>
+        <div id="objective" class="text-yellow-400 font-bold mt-1">任务: 寻找钥匙开启大门！</div>
+    </div>
+
+    <div id="messageBox">
+        <h2 id="msgTitle" class="text-4xl font-bold mb-4 text-red-500">你倒下了</h2>
+        <p id="msgText" class="text-xl mb-6">等待救援或重试...</p>
+        <button id="msgBtn" onclick="handleReset()" class="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-full font-bold transition">重试</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 核心变量 ---
+        let gameMode = 'single';
+        let gameActive = false;
+        let currentLevel = 1;
+        let hasKey = false;
+        let db, auth, user, appId;
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const hpEl = document.getElementById('hpVal');
+        const levelEl = document.getElementById('levelVal');
+        const messageBox = document.getElementById('messageBox');
+
+        const player = {
+            id: '', x: 50, y: 0, width: 30, height: 30, color: '#3b82f6',
+            vx: 0, vy: 0, speed: 6, jumpStrength: -14, gravity: 0.7,
+            grounded: false, hp: 100, scale: 1
+        };
+
+        let platforms = [];
+        let guards = [];
+        let keyItem = null;
+        let door = null;
+        let otherPlayers = {};
+
+        const levelData = {
+            1: { 
+                platforms: [{x:0,y:0.9,w:1,h:0.1,type:'normal'},{x:0.3,y:0.7,w:0.4,h:0.03,type:'normal'},{x:0.1,y:0.5,w:0.2,h:0.03,type:'normal'}], 
+                guards: [{x:0.4, y:0.7, range: 0.15, speed: 2}],
+                keyPos: {x:0.15,y:0.4}, doorPos: {x:0.9,y:0.75} 
+            },
+            2: { 
+                platforms: [{x:0,y:0.9,w:0.3,h:0.1,type:'normal'},{x:0.7,y:0.9,w:0.3,h:0.1,type:'normal'},{x:0.1,y:0.55,w:0.8,h:0.03,type:'crumble'}], 
+                guards: [{x:0.2, y:0.55, range: 0.3, speed: 3}, {x:0.6, y:0.55, range: 0.3, speed: -3}],
+                keyPos: {x:0.45,y:0.25}, doorPos: {x:0.05,y:0.75} 
+            }
+        };
+
+        // --- 模式启动 ---
+        window.startGame = async (mode) => {
+            gameMode = mode;
+            document.getElementById('menuOverlay').style.display = 'none';
+            
+            if (mode === 'multi') {
+                document.getElementById('multiInfo').classList.remove('hidden');
+                setupFirebase();
+            } else {
+                player.id = 'local-player';
+                player.color = '#3b82f6';
+                initLevel(1);
+            }
+            gameActive = true;
+            draw();
+        };
+
+        async function setupFirebase() {
+            const config = JSON.parse(__firebase_config);
+            const app = initializeApp(config);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'dungeon-master-v1';
+
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+
+            onAuthStateChanged(auth, (u) => {
+                if (u) {
+                    user = u;
+                    player.id = u.uid;
+                    player.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+                    document.getElementById('myIdDisplay').innerText = u.uid.substring(0,6);
+                    initLevel(1);
+                    startMultiplayerSync();
+                }
+            });
+        }
+
+        function startMultiplayerSync() {
+            // 定时上传位置
+            setInterval(() => {
+                if (!user || !gameActive) return;
+                setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), {
+                    x: player.x, y: player.y, hp: player.hp, color: player.color,
+                    level: currentLevel, hasKey: hasKey, lastSeen: Date.now()
+                }, { merge: true });
+            }, 50);
+
+            // 监听他人
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'players'), (snapshot) => {
+                const now = Date.now();
+                snapshot.forEach(doc => {
+                    if (doc.id !== user.uid && now - doc.data().lastSeen < 3000) {
+                        otherPlayers[doc.id] = doc.data();
+                        if (doc.data().level === currentLevel && doc.data().hasKey) hasKey = true;
+                    }
+                });
+                document.getElementById('onlineCount').innerText = `在线人数: ${Object.keys(otherPlayers).length + 1}`;
+            });
+        }
+
+        // --- 核心逻辑 ---
+        function initLevel(lv) {
+            const data = levelData[lv] || levelData[1];
+            currentLevel = lv;
+            levelEl.innerText = currentLevel;
+            hasKey = false;
+            player.scale = 1;
+            player.hp = 100;
+            player.x = 50; player.y = canvas.height - 150;
+            
+            platforms = data.platforms.map(p => ({
+                x: p.x * canvas.width, y: p.y * canvas.height,
+                w: p.w * canvas.width, h: p.h * canvas.height,
+                type: p.type || 'normal', timer: 40, active: false, visible: true
+            }));
+
+            // 单人模式才加入守卫（多人模式由于同步复杂性暂不加入守卫AI，或可扩展为共享AI）
+            guards = (gameMode === 'single' && data.guards) ? data.guards.map(g => ({
+                x: g.x * canvas.width, y: g.y * canvas.height - 40,
+                startX: g.x * canvas.width, range: g.range * canvas.width,
+                vx: g.speed, w: 30, h: 40, dir: g.speed > 0 ? 1 : -1
+            })) : [];
+
+            keyItem = { x: data.keyPos.x * canvas.width, y: data.keyPos.y * canvas.height, w: 30, h: 30 };
+            door = { x: data.doorPos.x * canvas.width, y: data.doorPos.y * canvas.height, w: 60, h: 90 };
+            
+            messageBox.style.display = 'none';
+        }
+
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function update() {
+            if (!gameActive) return;
+
+            if (player.scale < 1) {
+                player.scale -= 0.05;
+                if (player.scale <= 0) initLevel(currentLevel + 1);
+                return;
+            }
+
+            if (player.hp > 0) {
+                // 移动控制
+                if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed;
+                else if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed;
+                else player.vx *= 0.8;
+
+                if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space']) && player.grounded) {
+                    player.vy = player.jumpStrength;
+                    player.grounded = false;
+                }
+
+                player.vy += player.gravity;
+                player.x += player.vx;
+                player.y += player.vy;
+
+                // 碰撞检测
+                if (player.x < 0) player.x = 0;
+                if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+                if (player.y > canvas.height) player.hp = 0;
+
+                player.grounded = false;
+                platforms.forEach(p => {
+                    if (!p.visible) return;
+                    if (player.x < p.x + p.w && player.x + player.width > p.x &&
+                        player.y + player.height > p.y && player.y + player.height < p.y + p.h + player.vy) {
+                        player.y = p.y - player.height;
+                        player.vy = 0;
+                        player.grounded = true;
+                        if (p.type === 'crumble') p.active = true;
+                    }
+                    if (p.active) {
+                        p.timer--;
+                        if (p.timer <= 0) p.visible = false;
+                    }
+                });
+
+                // 守卫逻辑 (仅单人)
+                guards.forEach(g => {
+                    g.x += g.vx;
+                    if (Math.abs(g.x - g.startX) > g.range) g.vx *= -1;
+                    if (player.x < g.x + g.w && player.x + player.width > g.x &&
+                        player.y < g.y + g.h && player.y + player.height > g.y) {
+                        player.hp -= 2; // 触碰守卫扣血
+                    }
+                });
+
+                // 物品检测
+                if (!hasKey && player.x < keyItem.x + keyItem.w && player.x + player.width > keyItem.x &&
+                    player.y < keyItem.y + keyItem.h && player.y + player.height > keyItem.y) {
+                    hasKey = true;
+                }
+
+                if (hasKey && player.x < door.x + door.w && player.x + player.width > door.x &&
+                    player.y < door.y + door.h && player.y + player.height > door.y) {
+                    player.scale = 0.99;
+                }
+            } else {
+                messageBox.style.display = 'block';
+            }
+
+            hpEl.innerText = Math.max(0, Math.floor(player.hp));
+        }
+
+        function draw() {
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 背景
+            ctx.strokeStyle = '#222';
+            for(let i=0; i<canvas.width; i+=100) ctx.strokeLine = i; // 简易网格
+
+            // 门
+            ctx.fillStyle = hasKey ? '#1a1a1a' : '#222';
+            ctx.fillRect(door.x, door.y, door.w, door.h);
+            ctx.fillStyle = hasKey ? '#22c55e' : '#ef4444';
+            ctx.beginPath(); ctx.arc(door.x + door.w/2, door.y + 15, 6, 0, Math.PI*2); ctx.fill();
+
+            // 平台
+            platforms.forEach(p => {
+                if (!p.visible) return;
+                ctx.fillStyle = p.type === 'crumble' ? (p.active ? '#991b1b' : '#777') : '#555';
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+            });
+
+            // 守卫
+            guards.forEach(g => {
+                ctx.fillStyle = '#991b1b';
+                ctx.fillRect(g.x, g.y, g.w, g.h);
+            });
+
+            // 其他玩家
+            if (gameMode === 'multi') {
+                for (let id in otherPlayers) {
+                    const op = otherPlayers[id];
+                    if (op.level === currentLevel) {
+                        ctx.globalAlpha = 0.5;
+                        ctx.fillStyle = op.color;
+                        ctx.fillRect(op.x, op.y, 30, 30);
+                    }
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            // 本地玩家
+            if (player.hp > 0) {
+                ctx.save();
+                ctx.translate(player.x + 15, player.y + 15);
+                ctx.scale(player.scale, player.scale);
+                ctx.fillStyle = player.color;
+                ctx.fillRect(-15, -15, 30, 30);
+                ctx.restore();
+            }
+
+            // 钥匙
+            if (!hasKey) {
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillRect(keyItem.x + 10, keyItem.y, 10, 30);
+            }
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        window.handleReset = () => {
+            initLevel(currentLevel);
+        };
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    </script>
+</body>
+</html>
